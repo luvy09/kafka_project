@@ -137,7 +137,7 @@ def main(topic):
                             key=string_serializer(str(uuid4()), order_to_dict),
                             value=json_serializer(order, SerializationContext(topic, MessageField.VALUE)),
                             on_delivery=delivery_report)
-            break
+            
     except KeyboardInterrupt:
         pass
     except ValueError:
