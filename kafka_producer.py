@@ -37,7 +37,7 @@ SECURITY_PROTOCOL = 'SASL_SSL'
 SSL_MACHENISM = 'PLAIN'
 SCHEMA_REGISTRY_API_KEY = '7TI4AUDWOTONCRUK'
 SCHEMA_REGISTRY_API_SECRET = 'CYwxvZC4Cy3iX5jsTccYdxesFJCnDowkTaKiS7bPrtWKTKHsL0yM+GsA8TrwjBY/'
-
+schemaid = 100003
 
 def sasl_conf():
 
@@ -119,7 +119,7 @@ def main(topic):
     
     schema_registry_conf = schema_config()
     schema_registry_client = SchemaRegistryClient(schema_registry_conf)
-    schema_str = schemar_registry_client.get_latest_version('').schema.schema_str
+    schema_str = schemar_registry_client.get_latest_version('schemaid').schema.schema_str
     string_serializer = StringSerializer('utf_8')
     json_serializer = JSONSerializer(schema_str, schema_registry_client, order_to_dict)
 
