@@ -4,9 +4,6 @@ from confluent_kafka import Consumer
 from confluent_kafka.serialization import SerializationContext, MessageField
 from confluent_kafka.schema_registry.json_schema import JSONDeserializer
 from confluent_kafka.schema_registry import SchemaRegistryClient
-import pandas as pd
-import json
-import csv
 
 
 API_KEY = 'MIDAS34RMTMYXIPX'
@@ -17,7 +14,7 @@ SECURITY_PROTOCOL = 'SASL_SSL'
 SSL_MACHENISM = 'PLAIN'
 SCHEMA_REGISTRY_API_KEY = '7TI4AUDWOTONCRUK'
 SCHEMA_REGISTRY_API_SECRET = 'CYwxvZC4Cy3iX5jsTccYdxesFJCnDowkTaKiS7bPrtWKTKHsL0yM+GsA8TrwjBY/'
-schemaid = 100003
+schema_id = "100003"
 
 def sasl_conf():
 
@@ -60,8 +57,8 @@ def main(topic):
 
     schema_registry_conf = schema_config()
     schema_registry_client = SchemaRegistryClient(schema_registry_conf)
-    schema_str1 = schema_registry_client.get_schema(schema_id).schema_str
-    json_deserializer = JSONDeserializer(schema_str1,
+    # schema_str1 = schema_registry_client.get_schema(schema_id).schema_str
+    json_deserializer = JSONDeserializer(schema_registry_client.get_schema(schema_id).schema_str,
                                          from_dict=Order.dict_to_order)
 
     consumer_conf = sasl_conf()
@@ -73,10 +70,6 @@ def main(topic):
     consumer.subscribe([topic])
 
     count=0
-    df=pd.DataFrame()
-    mydict=[]
-    columns=['order_number', 'order_date', 'item_name', 'quantity', 'product_price', 'total_products']
-    
     while True:
         try:
             # SIGINT can't be handled when polling, limit timeout to 1 second.
@@ -85,25 +78,15 @@ def main(topic):
                 continue
 
             order = json_deserializer(msg.value(), SerializationContext(msg.topic(), MessageField.VALUE))
-
+            
             if order is not None:
                 count=count+1
-                mydict.append(order.__dict__)
-
-                print(order.__dict__)
+                print("User record {}: order: {}\n"
+                      .format(msg.key(), order))
         except KeyboardInterrupt:
             break
     print(count)
-    print(type(order.__dict__))
-    
-    filename = "/Users/OneDrive/Desktop/Kafka/Output.csv"
-    with open(filename, 'w') as csvfile: 
-      writer = csv.DictWriter(csvfile, fieldnames = columns,extrasaction='ignore', delimiter = ',') 
-      writer.writeheader()  
-      writer.writerows(mydict) 
 
-
-    # df.to_csv("Output.csv")
     consumer.close()
 
 main("restaurant_orders_topic")
