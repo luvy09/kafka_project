@@ -1,0 +1,4 @@
+AnswerQ6
+a) by using different group ids the data is consumed by both the consumers of different consumer groups so that the data is shared with both the consumer groups.
+
+b) by using same group ids the data is distributed on the same consumer groups.
