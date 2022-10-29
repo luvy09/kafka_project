@@ -3,7 +3,10 @@ import argparse
 from confluent_kafka import Consumer
 from confluent_kafka.serialization import SerializationContext, MessageField
 from confluent_kafka.schema_registry.json_schema import JSONDeserializer
-
+from confluent_kafka.schema_registry import SchemaRegistryClient
+import pandas as pd
+import json
+import csv
 
 
 API_KEY = 'MIDAS34RMTMYXIPX'
@@ -14,7 +17,7 @@ SECURITY_PROTOCOL = 'SASL_SSL'
 SSL_MACHENISM = 'PLAIN'
 SCHEMA_REGISTRY_API_KEY = '7TI4AUDWOTONCRUK'
 SCHEMA_REGISTRY_API_SECRET = 'CYwxvZC4Cy3iX5jsTccYdxesFJCnDowkTaKiS7bPrtWKTKHsL0yM+GsA8TrwjBY/'
-
+schemaid = 100003
 
 def sasl_conf():
 
@@ -38,7 +41,7 @@ def schema_config():
     }
 
 
-class order:   
+class Order:   
     def __init__(self,record:dict):
         for k,v in record.items():
             setattr(self,k,v)
@@ -47,7 +50,7 @@ class order:
    
     @staticmethod
     def dict_to_order(data:dict,ctx):
-        return order(record=data)
+        return Order(record=data)
 
     def __str__(self):
         return f"{self.record}"
@@ -55,8 +58,11 @@ class order:
 
 def main(topic):
 
-    json_deserializer = JSONDeserializer(schema_str,
-                                         from_dict=Car.dict_to_order)
+    schema_registry_conf = schema_config()
+    schema_registry_client = SchemaRegistryClient(schema_registry_conf)
+    schema_str1 = schema_registry_client.get_schema(schema_id).schema_str
+    json_deserializer = JSONDeserializer(schema_str1,
+                                         from_dict=Order.dict_to_order)
 
     consumer_conf = sasl_conf()
     consumer_conf.update({
@@ -66,7 +72,11 @@ def main(topic):
     consumer = Consumer(consumer_conf)
     consumer.subscribe([topic])
 
-
+    count=0
+    df=pd.DataFrame()
+    mydict=[]
+    columns=['order_number', 'order_date', 'item_name', 'quantity', 'product_price', 'total_products']
+    
     while True:
         try:
             # SIGINT can't be handled when polling, limit timeout to 1 second.
@@ -74,14 +84,26 @@ def main(topic):
             if msg is None:
                 continue
 
-            car = json_deserializer(msg.value(), SerializationContext(msg.topic(), MessageField.VALUE))
+            order = json_deserializer(msg.value(), SerializationContext(msg.topic(), MessageField.VALUE))
 
-            if car is not None:
-                print("User record {}: order: {}\n"
-                      .format(msg.key(), order))
+            if order is not None:
+                count=count+1
+                mydict.append(order.__dict__)
+
+                print(order.__dict__)
         except KeyboardInterrupt:
             break
+    print(count)
+    print(type(order.__dict__))
+    
+    filename = "/Users/OneDrive/Desktop/Kafka/Output.csv"
+    with open(filename, 'w') as csvfile: 
+      writer = csv.DictWriter(csvfile, fieldnames = columns,extrasaction='ignore', delimiter = ',') 
+      writer.writeheader()  
+      writer.writerows(mydict) 
 
+
+    # df.to_csv("Output.csv")
     consumer.close()
 
-main("restaurant_orderstopic")
+main("restaurant_orders_topic")
