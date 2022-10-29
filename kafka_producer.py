@@ -13,7 +13,10 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-# limitations under the License
+# limitations under the License.
+
+
+# A simple example demonstrating use of JSONSerializer.
 
 import argparse
 from uuid import uuid4
@@ -22,12 +25,12 @@ from confluent_kafka import Producer
 from confluent_kafka.serialization import StringSerializer, SerializationContext, MessageField
 from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.json_schema import JSONSerializer
-#from confluent_kafka.schema_registry import *
+from confluent_kafka.schema_registry import *
 import pandas as pd
 from typing import List
 
 FILE_PATH = "C:\Users\Lenovo\Desktop\kafka_project\restaurant_orders.csv"
-columns=['Order_Number','Order_Date','Item_Name','Quantity','Product_Price','Total_products']
+columns=['order_number', 'order_date', 'item_name', 'quantity', 'product_price', 'total_products']
 
 API_KEY = 'MIDAS34RMTMYXIPX'
 ENDPOINT_SCHEMA_URL  = 'https://psrc-8kz20.us-east-2.aws.confluent.cloud'
@@ -61,7 +64,7 @@ def schema_config():
     }
 
 
-class order:   
+class Order:   
     def __init__(self,record:dict):
         for k,v in record.items():
             setattr(self,k,v)
@@ -69,19 +72,20 @@ class order:
         self.record=record
    
     @staticmethod
-    def dict_to_order(data:dict,ctx):
-        return order(record=data)
+    def dict_to_rest(data:dict,ctx):
+        return Order(record=data)
 
     def __str__(self):
         return f"{self.record}"
 
 
-def get_order_instance(file_path):
-    df=pd.read_csv(file_path)
-    df=df.iloc[:,1:]
-    cars:List[order]=[]
+def get_car_instance(file_path):
+    #df=pd.read_csv(file_path)
+    #df=df.iloc[:,1:]
+    df=pd.read_csv(file_path,names=columns,header=0)
+    orders:List[Order]=[]
     for data in df.values:
-       order=order(dict(zip(columns,data)))
+        order=Order(dict(zip(columns,data)))
         orders.append(order)
         yield order
 
@@ -116,35 +120,37 @@ def delivery_report(err, msg):
 
 
 def main(topic):
-    
+
     schema_registry_conf = schema_config()
     schema_registry_client = SchemaRegistryClient(schema_registry_conf)
-    schema_str = schemar_registry_client.get_latest_version('schemaid').schema.schema_str
+    schema_str1 = schema_registry_client.get_schema(schema_id).schema_str
+
     string_serializer = StringSerializer('utf_8')
-    json_serializer = JSONSerializer(schema_str, schema_registry_client, order_to_dict)
+    json_serializer = JSONSerializer(schema_str1, schema_registry_client, order_to_dict)
 
     producer = Producer(sasl_conf())
 
     print("Producing user records to topic {}. ^C to exit.".format(topic))
     #while True:
         # Serve on_delivery callbacks from previous calls to produce()
+    count=0
     producer.poll(0.0)
     try:
-        for order in get_order_instance(file_path=FILE_PATH):
-
+        for order in get_car_instance(file_path=FILE_PATH):
+            count=count+1
             print(order)
             producer.produce(topic=topic,
                             key=string_serializer(str(uuid4()), order_to_dict),
                             value=json_serializer(order, SerializationContext(topic, MessageField.VALUE)),
                             on_delivery=delivery_report)
-            
+            # break
     except KeyboardInterrupt:
         pass
     except ValueError:
         print("Invalid input, discarding record...")
         pass
-
+    print(count)
     print("\nFlushing records...")
     producer.flush()
 
-main("retaurant_orders_topic")
+main("restaurant_orders_topic")
